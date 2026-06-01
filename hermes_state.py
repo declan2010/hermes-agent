@@ -2240,7 +2240,7 @@ class SessionDB:
         return session_id
 
     def get_messages_as_conversation(
-        self, session_id: str, include_ancestors: bool = False
+        self, session_id: str, include_ancestors: bool = False, include_timestamp: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Load messages in the OpenAI conversation format (role + content dicts).
@@ -2256,7 +2256,8 @@ class SessionDB:
                 "SELECT role, content, tool_call_id, tool_calls, tool_name, "
                 "finish_reason, reasoning, reasoning_content, reasoning_details, "
                 "codex_reasoning_items, codex_message_items, platform_message_id, observed "
-                f"FROM messages WHERE session_id IN ({placeholders}) ORDER BY id",
+                + (", timestamp " if include_timestamp else "")
+                + f"FROM messages WHERE session_id IN ({placeholders}) ORDER BY id",
                 tuple(session_ids),
             ).fetchall()
 
@@ -2315,6 +2316,11 @@ class SessionDB:
                         msg["codex_message_items"] = None
             if include_ancestors and self._is_duplicate_replayed_user_message(messages, msg):
                 continue
+            if include_timestamp:
+                try:
+                    msg["timestamp"] = row["timestamp"]
+                except (KeyError, Exception):
+                    pass
             messages.append(msg)
         return messages
 
